@@ -5,6 +5,8 @@ import gym
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 env = gym.make('LunarLanderContinuous-v2')
 agent = Agent(alpha=0.000025, beta=0.00025, input_dims=[8], tau=0.001, env=env,

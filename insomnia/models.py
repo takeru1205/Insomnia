@@ -91,7 +91,7 @@ class CriticNetwork(nn.Module):
         nn.init.uniform_(self.q.weight.data, -f3, f3)
         nn.init.uniform_(self.q.bias.data, -f3, f3)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=beta)
+        self.optimizer = optim.Adam(self.parameters(), lr=beta, weight_decay=1e-2)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.to(self.device)
