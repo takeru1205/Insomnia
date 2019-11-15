@@ -4,7 +4,6 @@ from insomnia.models import Agent
 import gym
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 env = gym.make('LunarLanderContinuous-v2')
