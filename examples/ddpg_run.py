@@ -6,6 +6,9 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter(log_dir='tmp/ddpg/logs')
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -36,6 +39,8 @@ for i in range(5000):
         score += reward
         # env.render()
     score_history.append(score)
+    writer.add_scalar("reward", score, i)
+    writer.add_scalar("avg reward", np.mean(score_history[-100:]))
 
     if i % 25 == 0:
         agent.save_models()

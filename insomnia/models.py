@@ -32,16 +32,16 @@ class ReplayBuffer(object):
     def __init__(self, max_size, input_shape, n_actions):
         self.mem_size = max_size
         self.mem_cntr = 0
-        self.state_memory = np.zeros((self.mem_size, *input_shape))
-        self.new_state_memory = np.zeros((self.mem_size, *input_shape))
+        self.state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
+        self.new_state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
         self.action_memory = np.zeros((self.mem_size, n_actions))
         self.reward_memory = np.zeros(self.mem_size)
         self.terminal_memory = np.zeros(self.mem_size, dtype=np.float32)
 
     def store_transition(self, state, action, reward, state_, done):
         index = self.mem_cntr % self.mem_size
-        self.state_memory[index] = state
-        self.new_state_memory[index] = state_
+        self.state_memory[index] = state.cpu()
+        self.new_state_memory[index] = state_.cpu()
         self.action_memory[index] = action
         self.reward_memory[index] = reward
         self.terminal_memory[index] = 1 - done
@@ -198,7 +198,7 @@ class ActorNetwork(nn.Module):
 
 class Agent(object):
     def __init__(self, alpha, beta, input_dims, tau, env, gamma=0.99, n_actions=2,
-                 max_size=1000000, layer1_size=300, batch_size=64):
+                 max_size=100000, layer1_size=300, batch_size=64):
         """
 
         :param alpha: learning rate for actor network
@@ -233,7 +233,7 @@ class Agent(object):
     def choose_action(self, observation):
         self.actor.eval()
         # observation = observation.unsqueeze(0).to(self.actor.device)
-        mu = self.actor.forward(observation).to(self.actor.device)
+        mu = self.actor.forward(observation).to(self.actor.device, dtype=torch.float)
         mu_prime = mu + torch.tensor(self.noise(),
                                      dtype=torch.float).to(self.actor.device)
         self.actor.train()
@@ -249,9 +249,9 @@ class Agent(object):
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)
         reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)
         done = torch.tensor(done, dtype=torch.float).to(self.critic.device)
-        new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic.device)
+        new_state = torch.tensor(new_state, dtype=torch.uint8).to(self.critic.device, dtype=torch.float)
         action = torch.tensor(action, dtype=torch.float).to(self.critic.device)
-        state = torch.tensor(state, dtype=torch.float).to(self.critic.device)
+        state = torch.tensor(state, dtype=torch.uint8).to(self.critic.device, dtype=torch.float)
 
         self.target_actor.eval()
         self.target_critic.eval()
@@ -314,8 +314,8 @@ class Agent(object):
                             T.Resize(100, interpolation=Image.CUBIC),
                             T.ToTensor()])
         screen = self.env.render(mode='rgb_array').transpose((2, 0, 1))
-        screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
-        screen = torch.tensor(screen, dtype=torch.float)
+        # screen = np.ascontiguousarraya(screen, dtype=np.float32) / 255
+        screen = torch.tensor(screen.copy(), dtype=torch.uint8)
         screen = resize(screen).unsqueeze(0).to(self.device)
         return screen
 
