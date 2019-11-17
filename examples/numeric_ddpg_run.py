@@ -1,18 +1,19 @@
 import sys
+
 sys.path.append('../')
-from insomnia.models import Agent
+from insomnia.numeric_models import Agent
 import gym
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import os
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 env = gym.make('LunarLanderContinuous-v2')
 agent = Agent(alpha=0.000025, beta=0.00025, input_dims=[8], tau=0.001, env=env,
-              batch_size=64,  layer1_size=400, layer2_size=300, n_actions=2)
+              batch_size=64, layer1_size=400, layer2_size=300, n_actions=2)
 
-#agent.load_models()
+# agent.load_models()
 np.random.seed(0)
 
 score_history = []
@@ -23,6 +24,7 @@ for i in range(2000):
     while not done:
         act = agent.choose_action(obs)
         new_state, reward, done, info = env.step(act)
+
         agent.remember(obs, act, reward, new_state, int(done))
         agent.learn()
         score += reward
@@ -37,7 +39,6 @@ for i in range(2000):
           'trailing 100 games avg %.3f' % np.mean(score_history[-100:]))
 
 filename = 'LunarLander-alpha000025-beta00025-400-300.png'
-# plotLearning(score_history, filename, window=100)
 plt.plot(score_history, label='learning-curve')
 plt.savefig(filename)
 plt.show()

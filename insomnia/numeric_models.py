@@ -1,9 +1,11 @@
 import os
+
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
+
 
 class OUActionNoise(object):
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
@@ -22,6 +24,7 @@ class OUActionNoise(object):
 
     def reset(self):
         self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
+
 
 class ReplayBuffer(object):
     def __init__(self, max_size, input_shape, n_actions):
@@ -55,6 +58,7 @@ class ReplayBuffer(object):
 
         return states, actions, rewards, states_, terminal
 
+
 class CriticNetwork(nn.Module):
     def __init__(self, beta, input_dims, fc1_dims, fc2_dims, n_actions, name, chkpt_dir='tmp/ddpg'):
         """
@@ -71,7 +75,7 @@ class CriticNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.fc2_dims = fc2_dims
         self.n_actions = n_actions
-        self.checkpoint_file = os.path.join(chkpt_dir, name+'_ddpg')
+        self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
 
         self.fc1 = nn.Linear(*self.input_dims, self.fc1_dims)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
@@ -116,6 +120,7 @@ class CriticNetwork(nn.Module):
     def load_checkpoint(self):
         print('... loading checkpoint ...')
         self.load_state_dict(torch.load(self.checkpoint_file))
+
 
 class ActorcNetwork(nn.Module):
     def __init__(self, alpha, input_dims, fc1_dims, fc2_dims, n_actions, name, chkpt_dir='tmp/ddpg'):
@@ -177,6 +182,7 @@ class ActorcNetwork(nn.Module):
         print('... loading checkpoint ...')
         self.load_state_dict(torch.load(self.checkpoint_file))
 
+
 class Agent(object):
     def __init__(self, alpha, beta, input_dims, tau, env, gamma=0.99, n_actions=2,
                  max_size=1000000, layer1_size=400, layer2_size=300, batch_size=64):
@@ -202,23 +208,23 @@ class Agent(object):
         self.actor = ActorcNetwork(alpha, input_dims, layer1_size,
                                    layer2_size, n_actions=n_actions, name='Actor')
         self.target_actor = ActorcNetwork(alpha, input_dims, layer1_size,
-                                   layer2_size, n_actions=n_actions, name='TargetActor')
+                                          layer2_size, n_actions=n_actions, name='TargetActor')
 
         self.critic = CriticNetwork(beta, input_dims, layer1_size,
-                                   layer2_size, n_actions=n_actions, name='Critic')
+                                    layer2_size, n_actions=n_actions, name='Critic')
         self.target_critic = CriticNetwork(beta, input_dims, layer1_size,
-                                    layer2_size, n_actions=n_actions, name='TargetCritic')
+                                           layer2_size, n_actions=n_actions, name='TargetCritic')
 
         self.noise = OUActionNoise(mu=np.zeros(n_actions))
 
-        self.update_network_parameters(tau=1) # how often update target network
+        self.update_network_parameters(tau=1)  # how often update target network
 
     def choose_action(self, observation):
         self.actor.eval()
         observation = torch.tensor(observation, dtype=torch.float).to(self.actor.device)
         mu = self.actor.forward(observation).to(self.actor.device)
         mu_prime = mu + torch.tensor(self.noise(),
-                                 dtype=torch.float).to(self.actor.device)
+                                     dtype=torch.float).to(self.actor.device)
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
 
@@ -246,7 +252,7 @@ class Agent(object):
 
         target = []
         for j in range(self.batch_size):
-            target.append(reward[j] + self.gamma*critic_value_[j]*done[j])
+            target.append(reward[j] + self.gamma * critic_value_[j] * done[j])
         target = torch.tensor(target).to(self.critic.device)
         target = target.view(self.batch_size, 1)
 
@@ -282,16 +288,15 @@ class Agent(object):
 
         for name in critic_state_dict:
             critic_state_dict[name] = tau * critic_state_dict[name].clone() + \
-                                     (1 - tau) * target_critic_dict[name].clone()
+                                      (1 - tau) * target_critic_dict[name].clone()
 
         self.target_critic.load_state_dict(critic_state_dict)
 
         for name in actor_state_dict:
             actor_state_dict[name] = tau * actor_state_dict[name].clone() + \
-                                      (1 - tau) * target_actor_dict[name].clone()
+                                     (1 - tau) * target_actor_dict[name].clone()
 
         self.target_actor.load_state_dict(actor_state_dict)
-
 
     def save_models(self):
         self.actor.save_checkpoint()
@@ -304,23 +309,3 @@ class Agent(object):
         self.critic.load_checkpoint()
         self.target_critic.load_checkpoint()
         self.target_actor.load_checkpoint()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
