@@ -84,11 +84,17 @@ class CriticNetwork(nn.Module):
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
         self.bn3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(5824, self.fc1_dims)
+        self.fc1 = nn.Linear(5824, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-        self.bn4 = nn.LayerNorm(self.fc1_dims)
+        self.bn4 = nn.LayerNorm(1280)
+
+        self.fc2 = nn.Linear(1280, self.fc1_dims)
+        f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
+        nn.init.uniform_(self.fc2.weight.data, -f1, f1)
+        nn.init.uniform_(self.fc2.bias.data, -f1, f1)
+        self.bn5 = nn.LayerNorm(self.fc1_dims)
 
         self.action_value = nn.Linear(self.n_actions, fc1_dims)
 
@@ -114,6 +120,9 @@ class CriticNetwork(nn.Module):
         state_value = F.relu(state_value)
         state_value = self.fc1(state_value.view(-1, 5824))
         state_value = self.bn4(state_value)
+        state_value = F.relu(state_value)
+        state_value = self.fc2(state_value)
+        state_value = self.bn5(state_value)
 
         action_value = F.relu(self.action_value(action))
         state_action_value = F.relu(torch.add(state_value, action_value))
@@ -154,11 +163,17 @@ class ActorNetwork(nn.Module):
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
         self.bn3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(5824, self.fc1_dims)
+        self.fc1 = nn.Linear(5824, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-        self.bn4 = nn.LayerNorm(self.fc1_dims)
+        self.bn4 = nn.LayerNorm(1280)
+
+        self.fc2 = nn.Linear(1280, self.fc1_dims)
+        f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
+        nn.init.uniform_(self.fc2.weight.data, -f1, f1)
+        nn.init.uniform_(self.fc2.bias.data, -f1, f1)
+        self.bn5 = nn.LayerNorm(self.fc1_dims)
 
         f3 = 0.003
         self.mu = nn.Linear(self.fc1_dims, self.n_actions)
@@ -182,6 +197,9 @@ class ActorNetwork(nn.Module):
         x = F.relu(x)
         x = self.fc1(x.view(-1, 5824))
         x = self.bn4(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+        x = self.bn5(x)
         x = F.relu(x)
         x = torch.tanh(self.mu(x))
 
