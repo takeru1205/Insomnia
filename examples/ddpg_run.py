@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir='tmp/ddpg/logs')
+writer = SummaryWriter(log_dir='tmp/ddpg/logs/conv3-fc2-10000epochs')
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -20,7 +20,7 @@ agent = Agent(alpha=0.000025, beta=0.00025, input_dims=[3,100,150], tau=0.001, e
 np.random.seed(0)
 
 score_history = []
-for i in range(5000):
+for i in range(10000):
     env.reset()
     state = agent.get_screen()
     new_state = agent.get_screen()
@@ -39,8 +39,8 @@ for i in range(5000):
         score += reward
         # env.render()
     score_history.append(score)
-    writer.add_scalar("reward", score, i)
-    writer.add_scalar("avg reward", np.mean(score_history[-100:]))
+    writer.add_scalar("score/reward", score, i)
+    writer.add_scalar("score/avg-reward", np.mean(score_history[-100:]), i)
 
     if i % 25 == 0:
         agent.save_models()
@@ -48,6 +48,7 @@ for i in range(5000):
     print('episode ', i, 'score %.2f' % score,
           'trailing 100 games avg %.3f' % np.mean(score_history[-100:]))
 
+writer.close()
 filename = 'LunarLander-alpha000025-beta00025-400-300.png'
 plt.plot(score_history, label='learning-curve')
 plt.savefig(filename)
