@@ -76,15 +76,16 @@ class CriticNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
+        self.fc_input = 163840
 
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=12, stride=4)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=6, stride=2)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
-        self.bn3 = nn.BatchNorm2d(64)
+        self.conv1 = nn.Conv2d(12, 64, kernel_size=6, stride=2)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=6, stride=2)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=1)
+        self.bn3 = nn.BatchNorm2d(256)
 
-        self.fc1 = nn.Linear(5824, 1280)
+        self.fc1 = nn.Linear(self.fc_input, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
@@ -118,7 +119,7 @@ class CriticNetwork(nn.Module):
         state_value = self.conv3(state_value)
         state_value = self.bn3(state_value)
         state_value = F.relu(state_value)
-        state_value = self.fc1(state_value.view(-1, 5824))
+        state_value = self.fc1(state_value.view(-1, self.fc_input))
         state_value = self.bn4(state_value)
         state_value = F.relu(state_value)
         state_value = self.fc2(state_value)
@@ -155,15 +156,16 @@ class ActorNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
+        self.fc_input = 163840
 
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=12, stride=4)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=6, stride=2)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
-        self.bn3 = nn.BatchNorm2d(64)
+        self.conv1 = nn.Conv2d(12, 64, kernel_size=6, stride=2)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=6, stride=2)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=1)
+        self.bn3 = nn.BatchNorm2d(256)
 
-        self.fc1 = nn.Linear(5824, 1280)
+        self.fc1 = nn.Linear(self.fc_input, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
@@ -195,7 +197,7 @@ class ActorNetwork(nn.Module):
         x = self.conv3(x)
         x = self.bn3(x)
         x = F.relu(x)
-        x = self.fc1(x.view(-1, 5824))
+        x = self.fc1(x.view(-1, self.fc_input))
         x = self.bn4(x)
         x = F.relu(x)
         x = self.fc2(x)
@@ -329,10 +331,9 @@ class Agent(object):
 
     def get_screen(self):
         resize = T.Compose([T.ToPILImage(),
-                            T.Resize(100, interpolation=Image.CUBIC),
+                            T.Resize(200, interpolation=Image.CUBIC),
                             T.ToTensor()])
         screen = self.env.render(mode='rgb_array').transpose((2, 0, 1))
-        # screen = np.ascontiguousarraya(screen, dtype=np.float32) / 255
         screen = torch.tensor(screen.copy(), dtype=torch.uint8)
         screen = resize(screen).unsqueeze(0).to(self.device)
         return screen
