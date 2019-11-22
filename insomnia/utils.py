@@ -9,7 +9,7 @@ class FrameObsWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.resize = T.Compose([T.ToPILImage(),
-                            T.Resize((100, 150), interpolation=Image.CUBIC),
+                            T.Resize((50, 75), interpolation=Image.CUBIC),
                             T.ToTensor()])
     
     def reset(self, **kwargs):
@@ -49,9 +49,6 @@ class FrameStackWrapper(gym.Wrapper):
 class ForPytorchWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self.resize = T.Compose([T.ToPILImage(),
-                            T.Resize((100, 150), interpolation=Image.CUBIC),
-                            T.ToTensor()])
     
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)

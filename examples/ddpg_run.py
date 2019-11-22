@@ -10,7 +10,7 @@ from insomnia.utils import FrameStackWrapper, FrameObsWrapper, ForPytorchWrapper
 from torch.utils.tensorboard import SummaryWriter
 from copy import deepcopy
 
-writer = SummaryWriter(log_dir='tmp/ddpg/logs/conv3-fc2-10000epochs')
+writer = SummaryWriter(log_dir='tmp/ddpg/logs/conv3-fc2-4frame-stack')
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -18,8 +18,11 @@ env = gym.make('LunarLanderContinuous-v2')
 env = FrameObsWrapper(env)
 env = FrameStackWrapper(env)
 env = ForPytorchWrapper(env)
-agent = Agent(alpha=0.000025, beta=0.00025, input_dims=[12,100,150], tau=0.001, env=env,
-              batch_size=64, layer1_size=300, n_actions=2)
+
+state = env.reset()
+
+agent = Agent(alpha=0.000125, beta=0.0001, input_dims=[12,50,75], tau=0.001,
+              batch_size=8, layer1_size=300, n_actions=2)
 
 # agent.load_models()
 np.random.seed(0)
@@ -28,13 +31,11 @@ score_history = []
 i = 0
 while True:
     state = env.reset()
-    print(state.shape)
     new_state = deepcopy(state)
     done = False
     score = 0
     while not done:
         act = agent.choose_action(state.to(agent.device))
-        print(act)
         state = new_state
         new_state, reward, done, info = env.step(act[0])
         # state = new_state

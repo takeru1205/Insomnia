@@ -76,7 +76,7 @@ class CriticNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 163840
+        self.fc_input = 23296
 
         self.conv1 = nn.Conv2d(12, 64, kernel_size=6, stride=2)
         self.bn1 = nn.BatchNorm2d(64)
@@ -106,6 +106,7 @@ class CriticNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=beta, weight_decay=1e-2)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda'
 
         self.to(self.device)
 
@@ -156,7 +157,7 @@ class ActorNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 163840
+        self.fc_input = 23296
 
         self.conv1 = nn.Conv2d(12, 64, kernel_size=6, stride=2)
         self.bn1 = nn.BatchNorm2d(64)
@@ -184,6 +185,7 @@ class ActorNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda'
 
         self.to(self.device)
 
@@ -217,7 +219,7 @@ class ActorNetwork(nn.Module):
 
 
 class Agent(object):
-    def __init__(self, alpha, beta, input_dims, tau, env, gamma=0.99, n_actions=2,
+    def __init__(self, alpha, beta, input_dims, tau, gamma=0.99, n_actions=2,
                  max_size=100000, layer1_size=300, batch_size=64):
         """
 
@@ -234,7 +236,7 @@ class Agent(object):
         """
         self.gamma = gamma
         self.tau = tau
-        self.env = env
+        # self.env = env
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
         self.batch_size = batch_size
 
@@ -249,13 +251,15 @@ class Agent(object):
         self.update_network_parameters(tau=1)  # how often update target network
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda'
 
     def choose_action(self, observation):
         self.actor.eval()
+    
         # observation = observation.unsqueeze(0).to(self.actor.device)
         mu = self.actor.forward(observation).to(self.actor.device, dtype=torch.float)
         mu_prime = mu + torch.tensor(self.noise(),
-                                     dtype=torch.float).to(self.actor.device)
+                                    dtype=torch.float).to(self.actor.device)
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
 
@@ -329,14 +333,14 @@ class Agent(object):
 
         self.target_actor.load_state_dict(actor_state_dict, strict=False)
 
-    def get_screen(self):
-        resize = T.Compose([T.ToPILImage(),
-                            T.Resize(200, interpolation=Image.CUBIC),
-                            T.ToTensor()])
-        screen = self.env.render(mode='rgb_array').transpose((2, 0, 1))
-        screen = torch.tensor(screen.copy(), dtype=torch.uint8)
-        screen = resize(screen).unsqueeze(0).to(self.device)
-        return screen
+    #def get_screen(self):
+    #    resize = T.Compose([T.ToPILImage(),
+    #                        T.Resize(200, interpolation=Image.CUBIC),
+    #                        T.ToTensor()])
+    #    screen = self.env.render(mode='rgb_array').transpose((2, 0, 1))
+    #    screen = torch.tensor(screen.copy(), dtype=torch.uint8)
+    #    screen = resize(screen).unsqueeze(0).to(self.device)
+    #    return screen
 
     def save_models(self):
         self.actor.save_checkpoint()
