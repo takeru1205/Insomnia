@@ -5,18 +5,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import torchvision.transforms as T
-from PIL import Image
 
 
 class OUActionNoise(object):
-    def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
+    def __init__(self, mu, sigma=0.2, theta=0.15, dt=1e-2, x0=None):
         self.mu = mu
         self.sigma = sigma
         self.dt = dt
         self.theta = theta
         self.x0 = x0
-        self.reset()
+        self.x_prev = self.reset()
 
     def __call__(self):
         x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
@@ -25,7 +23,18 @@ class OUActionNoise(object):
         return x
 
     def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
+        return self.x0 if self.x0 is not None else np.zeros_like(self.mu)
+
+
+class GaussianActionNoise(object):
+    def __init__(self, mu, sigma=0.1):
+        self.mu = mu
+        self.sigma = sigma
+
+    def __call__(self):
+        noise = np.random.normal(self.mu, self.sigma)
+        # return np.random.normal(self.mu, self.sigma)
+        return noise
 
 
 class ReplayBuffer(object):
@@ -66,7 +75,7 @@ class CriticNetwork(nn.Module):
         """
         :param beta: learning rate
         :param input_dims: input dimension for model
-        :param fc1_dims: finput dimension for first fully connected layer
+        :param fc1_dims: input dimension for first fully connected layer
         :param n_actions: number of actions therefore output of model
         :param name: use name when save this model
         :param chkpt_dir: to save directory
@@ -93,8 +102,8 @@ class CriticNetwork(nn.Module):
 
         self.fc2 = nn.Linear(1280, self.fc1_dims)
         f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
-        nn.init.uniform_(self.fc2.weight.data, -f1, f1)
-        nn.init.uniform_(self.fc2.bias.data, -f1, f1)
+        nn.init.uniform_(self.fc2.weight.data, -f2, f2)
+        nn.init.uniform_(self.fc2.bias.data, -f2, f2)
         self.bn5 = nn.LayerNorm(self.fc1_dims)
 
         self.action_value = nn.Linear(self.n_actions, fc1_dims)
@@ -106,7 +115,6 @@ class CriticNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=beta, weight_decay=1e-2)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = 'cuda'
 
         self.to(self.device)
 
@@ -133,7 +141,7 @@ class CriticNetwork(nn.Module):
         return state_action_value
 
     def save_checkpoint(self):
-        print('... saving chekpoint ...')
+        print('... saving checkpoint ...')
         torch.save(self.state_dict(), self.checkpoint_file)
 
     def load_checkpoint(self):
@@ -145,7 +153,7 @@ class ActorNetwork(nn.Module):
     def __init__(self, alpha, input_dims, fc1_dims, n_actions, name, chkpt_dir='tmp/ddpg'):
         """
 
-        :param alpha: learnign rate
+        :param alpha: learning rate
         :param input_dims: input dimension for model
         :param fc1_dims: input dimension for first fully connected layer
         :param n_actions: number of actions therefore output of model
@@ -174,8 +182,8 @@ class ActorNetwork(nn.Module):
 
         self.fc2 = nn.Linear(1280, self.fc1_dims)
         f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
-        nn.init.uniform_(self.fc2.weight.data, -f1, f1)
-        nn.init.uniform_(self.fc2.bias.data, -f1, f1)
+        nn.init.uniform_(self.fc2.weight.data, -f2, f2)
+        nn.init.uniform_(self.fc2.bias.data, -f2, f2)
         self.bn5 = nn.LayerNorm(self.fc1_dims)
 
         f3 = 0.003
@@ -185,7 +193,6 @@ class ActorNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = 'cuda'
 
         self.to(self.device)
 
@@ -210,7 +217,7 @@ class ActorNetwork(nn.Module):
         return x
 
     def save_checkpoint(self):
-        print('... saving chekpoint ...')
+        print('... saving checkpoint ...')
         torch.save(self.state_dict(), self.checkpoint_file)
 
     def load_checkpoint(self):
@@ -227,7 +234,6 @@ class Agent(object):
         :param beta:  learning rate for cirtic network
         :param input_dims: input dimension for model
         :param tau:  describe later
-        :param env: environment
         :param gamma: discount coefficient
         :param n_actions: number of actions therefore output og model
         :param max_size: the maximum size of replay buffer
@@ -236,7 +242,6 @@ class Agent(object):
         """
         self.gamma = gamma
         self.tau = tau
-        # self.env = env
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
         self.batch_size = batch_size
 
@@ -246,20 +251,18 @@ class Agent(object):
         self.critic = CriticNetwork(beta, input_dims, layer1_size, n_actions=n_actions, name='Critic')
         self.target_critic = CriticNetwork(beta, input_dims, layer1_size, n_actions=n_actions, name='TargetCritic')
 
-        self.noise = OUActionNoise(mu=np.zeros(n_actions))
+        # self.noise = OUActionNoise(mu=np.zeros(n_actions))
+        self.noise = GaussianActionNoise(mu=np.zeros(n_actions))
 
         self.update_network_parameters(tau=1)  # how often update target network
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = 'cuda'
 
     def choose_action(self, observation):
         self.actor.eval()
-    
-        # observation = observation.unsqueeze(0).to(self.actor.device)
-        mu = self.actor.forward(observation).to(self.actor.device, dtype=torch.float)
-        mu_prime = mu + torch.tensor(self.noise(),
-                                    dtype=torch.float).to(self.actor.device)
+        mu = self.actor(observation).to(self.actor.device, dtype=torch.float)
+        mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)
+        # print('mu : {}, mu_prime : {}'.format(mu.item(), mu_prime.item()))
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
 
@@ -332,15 +335,6 @@ class Agent(object):
                                      (1 - tau) * target_actor_dict[name].clone()
 
         self.target_actor.load_state_dict(actor_state_dict, strict=False)
-
-    #def get_screen(self):
-    #    resize = T.Compose([T.ToPILImage(),
-    #                        T.Resize(200, interpolation=Image.CUBIC),
-    #                        T.ToTensor()])
-    #    screen = self.env.render(mode='rgb_array').transpose((2, 0, 1))
-    #    screen = torch.tensor(screen.copy(), dtype=torch.uint8)
-    #    screen = resize(screen).unsqueeze(0).to(self.device)
-    #    return screen
 
     def save_models(self):
         self.actor.save_checkpoint()

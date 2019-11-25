@@ -6,26 +6,30 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from insomnia.utils import FrameStackWrapper, FrameObsWrapper, ForPytorchWrapper
+from insomnia.utils import FrameStackWrapper, FrameConvertWrapper, FrameObsWrapper, ForPytorchWrapper
 from torch.utils.tensorboard import SummaryWriter
 from copy import deepcopy
 
-writer = SummaryWriter(log_dir='tmp/ddpg/logs/conv3-fc2-4frame-stack')
+writer = SummaryWriter(log_dir='tmp/ddpg/logs/pendulum-conv3-fc2-4frame_stack-gaussian_noise')
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-env = gym.make('LunarLanderContinuous-v2')
+# env = gym.make('MountainCarContinuous-v0')
+env = gym.make('Pendulum-v0')
 env = FrameObsWrapper(env)
+env = FrameConvertWrapper(env)
 env = FrameStackWrapper(env)
 env = ForPytorchWrapper(env)
 
 state = env.reset()
 
-agent = Agent(alpha=0.000125, beta=0.0001, input_dims=[12,50,75], tau=0.001,
-              batch_size=8, layer1_size=300, n_actions=2)
+agent = Agent(alpha=0.0005, beta=0.0003, input_dims=[12, 50, 75], tau=0.001,
+              batch_size=16, layer1_size=300, n_actions=1)
 
 # agent.load_models()
 np.random.seed(0)
+
+max_step = 400
 
 score_history = []
 i = 0
@@ -34,10 +38,11 @@ while True:
     new_state = deepcopy(state)
     done = False
     score = 0
+    current_step = 0
     while not done:
         act = agent.choose_action(state.to(agent.device))
         state = new_state
-        new_state, reward, done, info = env.step(act[0])
+        new_state, reward, done, info = env.step(act)
         # state = new_state
         # new_state = agent.get_screen()
 
@@ -46,6 +51,9 @@ while True:
         agent.remember(state, act, reward, new_state, int(done))
         agent.learn()
         score += reward
+        current_step += 1
+        if current_step >= max_step:
+            break
         # env.render()
     score_history.append(score)
     score_mean = np.mean(score_history[-100:])

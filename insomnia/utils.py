@@ -5,6 +5,7 @@ from collections import deque
 import torchvision.transforms as T
 from PIL import Image
 
+
 class FrameObsWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -28,6 +29,24 @@ class FrameObsWrapper(gym.Wrapper):
         obs = self.resize(obs)
         return obs, reward, done, info
 
+
+class FrameConvertWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def reset(self, **kwargs):
+        frame = self.env.reset(**kwargs)
+        return self._convert(frame)
+
+    def step(self, action):
+        frame, reward, done, info = self.env.step(action)
+        frame = self._convert(frame)
+        return frame, reward, done, info
+
+    def _convert(self, frame):
+        return 1 - frame / 255
+
+
 class FrameStackWrapper(gym.Wrapper):
     def __init__(self, env, _n_stack_frames=4):
         super().__init__(env)
@@ -45,6 +64,7 @@ class FrameStackWrapper(gym.Wrapper):
         self._frames.append(frame)
         obs = torch.cat(list(self._frames))
         return obs, reward, done, info
+
 
 class ForPytorchWrapper(gym.Wrapper):
     def __init__(self, env):
