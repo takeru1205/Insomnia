@@ -6,7 +6,7 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from insomnia.utils import FrameStackWrapper, FrameConvertWrapper, FrameObsWrapper, ForPytorchWrapper
+from insomnia.utils import FrameStackWrapper, FrameObsWrapper, ForPytorchWrapper
 from torch.utils.tensorboard import SummaryWriter
 from copy import deepcopy
 
@@ -17,7 +17,6 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 # env = gym.make('MountainCarContinuous-v0')
 env = gym.make('Pendulum-v0')
 env = FrameObsWrapper(env)
-env = FrameConvertWrapper(env)
 env = FrameStackWrapper(env)
 env = ForPytorchWrapper(env)
 
