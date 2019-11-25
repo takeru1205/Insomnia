@@ -43,9 +43,9 @@ class ReplayBuffer(object):
         self.mem_cntr = 0
         self.state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
         self.new_state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
-        self.action_memory = np.zeros((self.mem_size, n_actions))
-        self.reward_memory = np.zeros(self.mem_size)
-        self.terminal_memory = np.zeros(self.mem_size, dtype=np.float32)
+        self.action_memory = np.zeros((self.mem_size, n_actions), dtype=np.float32)
+        self.reward_memory = np.zeros(self.mem_size, dtype=np.int8)
+        self.terminal_memory = np.zeros(self.mem_size, dtype=np.uint8)
 
     def store_transition(self, state, action, reward, state_, done):
         index = self.mem_cntr % self.mem_size
@@ -260,6 +260,7 @@ class Agent(object):
 
     def choose_action(self, observation):
         self.actor.eval()
+        observation = self.normalize_frame(observation)  # normalize
         mu = self.actor(observation).to(self.actor.device, dtype=torch.float)
         mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)
         # print('mu : {}, mu_prime : {}'.format(mu.item(), mu_prime.item()))
@@ -274,15 +275,18 @@ class Agent(object):
             return
 
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)
-        reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)
-        done = torch.tensor(done, dtype=torch.float).to(self.critic.device)
-        new_state = torch.tensor(new_state, dtype=torch.uint8).to(self.critic.device, dtype=torch.float)
+        reward = torch.tensor(reward, dtype=torch.int8).to(self.critic.device)
+        done = torch.tensor(done, dtype=torch.uint8).to(self.critic.device)
+        new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic.device)
         action = torch.tensor(action, dtype=torch.float).to(self.critic.device)
-        state = torch.tensor(state, dtype=torch.uint8).to(self.critic.device, dtype=torch.float)
+        state = torch.tensor(state, dtype=torch.float).to(self.critic.device)
 
         self.target_actor.eval()
         self.target_critic.eval()
         self.critic.eval()
+
+        new_state = self.normalize_frame(new_state)
+        state = self.normalize_frame(state)
 
         target_actions = self.target_actor.forward(new_state)
         critic_value_ = self.target_critic.forward(new_state, target_actions)
@@ -335,6 +339,9 @@ class Agent(object):
                                      (1 - tau) * target_actor_dict[name].clone()
 
         self.target_actor.load_state_dict(actor_state_dict, strict=False)
+
+    def normalize_frame(self, frames):
+        return 1 - frames / 255
 
     def save_models(self):
         self.actor.save_checkpoint()
