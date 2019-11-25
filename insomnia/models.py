@@ -43,8 +43,8 @@ class ReplayBuffer(object):
         self.mem_cntr = 0
         self.state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
         self.new_state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
-        self.action_memory = np.zeros((self.mem_size, n_actions), dtype=np.float32)
-        self.reward_memory = np.zeros(self.mem_size, dtype=np.int8)
+        self.action_memory = np.zeros((self.mem_size, n_actions), dtype=np.half)
+        self.reward_memory = np.zeros(self.mem_size, dtype=np.float)
         self.terminal_memory = np.zeros(self.mem_size, dtype=np.uint8)
 
     def store_transition(self, state, action, reward, state_, done):
@@ -227,7 +227,7 @@ class ActorNetwork(nn.Module):
 
 class Agent(object):
     def __init__(self, alpha, beta, input_dims, tau, gamma=0.99, n_actions=2,
-                 max_size=100000, layer1_size=300, batch_size=64):
+                 max_size=300000, layer1_size=300, batch_size=64):
         """
 
         :param alpha: learning rate for actor network
@@ -275,7 +275,7 @@ class Agent(object):
             return
 
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)
-        reward = torch.tensor(reward, dtype=torch.int8).to(self.critic.device)
+        reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)
         done = torch.tensor(done, dtype=torch.uint8).to(self.critic.device)
         new_state = torch.tensor(new_state, dtype=torch.float).to(self.critic.device)
         action = torch.tensor(action, dtype=torch.float).to(self.critic.device)

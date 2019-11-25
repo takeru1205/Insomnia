@@ -39,9 +39,9 @@ while True:
     score = 0
     current_step = 0
     while not done:
-        act = agent.choose_action(state.to(agent.device))
+        act = agent.choose_action(new_state.to(agent.device))
         state = new_state
-        new_state, reward, done, info = env.step(act)
+        new_state, reward, done, _ = env.step(act)
         # state = new_state
         # new_state = agent.get_screen()
 
