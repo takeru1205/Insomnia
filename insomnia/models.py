@@ -27,7 +27,7 @@ class OUActionNoise(object):
 
 
 class GaussianActionNoise(object):
-    def __init__(self, mu, sigma=0.1):
+    def __init__(self, mu, sigma=0.3):
         self.mu = mu
         self.sigma = sigma
 
@@ -85,22 +85,23 @@ class CriticNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 23296
+        self.fc_input = 16384
 
-        self.conv1 = nn.Conv2d(12, 64, kernel_size=6, stride=2)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=6, stride=2)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=1)
-        self.bn3 = nn.BatchNorm2d(256)
+        self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
+        self.bn3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(self.fc_input, 1280)
+        self.fc1 = nn.Linear(self.fc_input, 1024)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-        self.bn4 = nn.LayerNorm(1280)
+        self.bn4 = nn.LayerNorm(1024)
+        self.dropout = nn.Dropout(p=0.3)
 
-        self.fc2 = nn.Linear(1280, self.fc1_dims)
+        self.fc2 = nn.Linear(1024, self.fc1_dims)
         f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
         nn.init.uniform_(self.fc2.weight.data, -f2, f2)
         nn.init.uniform_(self.fc2.bias.data, -f2, f2)
@@ -131,6 +132,7 @@ class CriticNetwork(nn.Module):
         state_value = self.fc1(state_value.view(-1, self.fc_input))
         state_value = self.bn4(state_value)
         state_value = F.relu(state_value)
+        state_value = self.dropout(state_value)
         state_value = self.fc2(state_value)
         state_value = self.bn5(state_value)
 
@@ -165,22 +167,23 @@ class ActorNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 23296
+        self.fc_input = 128
 
-        self.conv1 = nn.Conv2d(12, 64, kernel_size=6, stride=2)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=6, stride=2)
-        self.bn2 = nn.BatchNorm2d(128)
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=1)
-        self.bn3 = nn.BatchNorm2d(256)
+        self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
+        self.bn3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(self.fc_input, 1280)
+        self.fc1 = nn.Linear(self.fc_input, 1024)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-        self.bn4 = nn.LayerNorm(1280)
+        self.bn4 = nn.LayerNorm(1024)
+        self.dropout = nn.Dropout(p=0.3)
 
-        self.fc2 = nn.Linear(1280, self.fc1_dims)
+        self.fc2 = nn.Linear(1024, self.fc1_dims)
         f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
         nn.init.uniform_(self.fc2.weight.data, -f2, f2)
         nn.init.uniform_(self.fc2.bias.data, -f2, f2)
@@ -209,6 +212,7 @@ class ActorNetwork(nn.Module):
         x = self.fc1(x.view(-1, self.fc_input))
         x = self.bn4(x)
         x = F.relu(x)
+        x = self.dropout(x)
         x = self.fc2(x)
         x = self.bn5(x)
         x = F.relu(x)
@@ -339,6 +343,12 @@ class Agent(object):
                                      (1 - tau) * target_actor_dict[name].clone()
 
         self.target_actor.load_state_dict(actor_state_dict, strict=False)
+
+    def test_action(self, observation):
+        self.actor.eval()
+        observation = self.normalize_frame(observation)  # normalize
+        mu = self.actor(observation)
+        return mu.cpu().detach().numpy()
 
     def normalize_frame(self, frames):
         return 1 - frames / 255

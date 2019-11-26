@@ -10,7 +10,7 @@ from insomnia.utils import FrameStackWrapper, FrameObsWrapper, ForPytorchWrapper
 from torch.utils.tensorboard import SummaryWriter
 from copy import deepcopy
 
-writer = SummaryWriter(log_dir='tmp/ddpg/logs/pendulum-conv3-fc2-4frame_stack-gaussian_noise')
+writer = SummaryWriter(log_dir='tmp/ddpg/logs/pendulum-shallow-conv3-fc2-4frame_stack-gaussian_noise-128batch-sigma3')
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -23,12 +23,12 @@ env = ForPytorchWrapper(env)
 state = env.reset()
 
 agent = Agent(alpha=0.0005, beta=0.0003, input_dims=[12, 50, 75], tau=0.001,
-              batch_size=16, layer1_size=300, n_actions=1)
+              batch_size=128, layer1_size=300, n_actions=1)
 
 # agent.load_models()
 np.random.seed(0)
 
-max_step = 400
+max_step = 1000
 
 score_history = []
 i = 0
@@ -57,13 +57,27 @@ while True:
     score_history.append(score)
     score_mean = np.mean(score_history[-100:])
     writer.add_scalar("score/reward", score, i)
-    writer.add_scalar("score/avg-reward", score_mean, i)
+    writer.add_scalar("score/avg_reward", score_mean, i)
 
     if i % 25 == 0:
+        done = False
         agent.save_models()
+        test_state = env.reset()
+        test_score = 0
+        test_steps = 0
+        while not done:
+            test_act = agent.test_action(test_state.to(agent.device))
+            test_state, reward, done, _ = env.step(test_act)
+            test_score += reward
+            test_steps += 1
+        print('============================================')
+        print('total score : {},   test steps : {}'.format(test_score, test_steps))
+        print('============================================')
+        writer.add_scalar("test/total-reward", test_score, i)
 
     print('episode ', i, 'score %.2f' % score,
           'trailing 100 games avg %.3f' % score_mean)
+
     if score_mean >= 50:
         print('============================================')
         print('========= This task completed !! ===========')
