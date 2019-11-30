@@ -4,29 +4,29 @@ import torch
 from collections import deque
 import torchvision.transforms as T
 from PIL import Image
-
+import random
+import cv2
 
 class FrameObsWrapper(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, img_width, img_height):
         super().__init__(env)
-        self.resize = T.Compose([T.ToPILImage(),
-                            T.Resize((50, 75), interpolation=Image.CUBIC),
-                            T.ToTensor()])
+        self.img_width = img_width
+        self.img_height = img_height
     
     def reset(self, **kwargs):
         _ = self.env.reset(**kwargs)
         obs = self.env.render(mode='rgb_array')
+        obs = cv2.resize(obs, (self.img_height, self.img_width), interpolation=cv2.INTER_AREA)
         obs = obs.transpose((2, 0, 1))
-        torch.Tensor(obs.astype(np.uint8))
-        obs = self.resize(obs)
+        obs = torch.Tensor(obs).to(torch.uint8)
         return obs
 
     def step(self, action):
         _, reward, done, info = self.env.step(action)
         obs = self.env.render(mode='rgb_array')
+        obs = cv2.resize(obs, (self.img_height, self.img_width), interpolation=cv2.INTER_AREA)
         obs = obs.transpose((2, 0, 1))
-        torch.Tensor(obs.astype(np.uint8))
-        obs = self.resize(obs)
+        obs = torch.Tensor(obs).to(torch.uint8)
         return obs, reward, done, info
 
 
@@ -77,5 +77,5 @@ class ForPytorchWrapper(gym.Wrapper):
     
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
-        obs = obs.unsqueeze(0)
+        obs = obs.unsqueeze(0)  # add axis to make batch
         return obs, reward, done, info

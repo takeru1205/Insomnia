@@ -27,14 +27,12 @@ class OUActionNoise(object):
 
 
 class GaussianActionNoise(object):
-    def __init__(self, mu, sigma=0.3):
+    def __init__(self, mu, sigma=0.1):
         self.mu = mu
         self.sigma = sigma
 
     def __call__(self):
-        noise = np.random.normal(self.mu, self.sigma)
-        # return np.random.normal(self.mu, self.sigma)
-        return noise
+        return np.random.normal(self.mu, self.sigma)
 
 
 class ReplayBuffer(object):
@@ -75,7 +73,7 @@ class CriticNetwork(nn.Module):
         """
         :param beta: learning rate
         :param input_dims: input dimension for model
-        :param fc1_dims: input dimension for first fully connected layer
+        :param fc1_dims: finput dimension for first fully connected layer
         :param n_actions: number of actions therefore output of model
         :param name: use name when save this model
         :param chkpt_dir: to save directory
@@ -85,7 +83,7 @@ class CriticNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 16384
+        self.fc_input = 1024
 
         self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
         self.bn1 = nn.BatchNorm2d(32)
@@ -94,14 +92,13 @@ class CriticNetwork(nn.Module):
         self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
         self.bn3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(self.fc_input, 1024)
+        self.fc1 = nn.Linear(self.fc_input, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-        self.bn4 = nn.LayerNorm(1024)
-        self.dropout = nn.Dropout(p=0.3)
+        self.bn4 = nn.LayerNorm(1280)
 
-        self.fc2 = nn.Linear(1024, self.fc1_dims)
+        self.fc2 = nn.Linear(1280, self.fc1_dims)
         f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
         nn.init.uniform_(self.fc2.weight.data, -f2, f2)
         nn.init.uniform_(self.fc2.bias.data, -f2, f2)
@@ -116,9 +113,10 @@ class CriticNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=beta, weight_decay=1e-2)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda'
 
         self.to(self.device)
-
+    
     def forward(self, state, action):
         state_value = self.conv1(state)
         state_value = self.bn1(state_value)
@@ -132,7 +130,6 @@ class CriticNetwork(nn.Module):
         state_value = self.fc1(state_value.view(-1, self.fc_input))
         state_value = self.bn4(state_value)
         state_value = F.relu(state_value)
-        state_value = self.dropout(state_value)
         state_value = self.fc2(state_value)
         state_value = self.bn5(state_value)
 
@@ -154,8 +151,7 @@ class CriticNetwork(nn.Module):
 class ActorNetwork(nn.Module):
     def __init__(self, alpha, input_dims, fc1_dims, n_actions, name, chkpt_dir='tmp/ddpg'):
         """
-
-        :param alpha: learning rate
+        :param alpha: learnign rate
         :param input_dims: input dimension for model
         :param fc1_dims: input dimension for first fully connected layer
         :param n_actions: number of actions therefore output of model
@@ -167,7 +163,7 @@ class ActorNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 128
+        self.fc_input = 1024
 
         self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
         self.bn1 = nn.BatchNorm2d(32)
@@ -176,14 +172,13 @@ class ActorNetwork(nn.Module):
         self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
         self.bn3 = nn.BatchNorm2d(64)
 
-        self.fc1 = nn.Linear(self.fc_input, 1024)
+        self.fc1 = nn.Linear(self.fc_input, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])
         nn.init.uniform_(self.fc1.weight.data, -f1, f1)
         nn.init.uniform_(self.fc1.bias.data, -f1, f1)
-        self.bn4 = nn.LayerNorm(1024)
-        self.dropout = nn.Dropout(p=0.3)
+        self.bn4 = nn.LayerNorm(1280)
 
-        self.fc2 = nn.Linear(1024, self.fc1_dims)
+        self.fc2 = nn.Linear(1280, self.fc1_dims)
         f2 = 1 / np.sqrt(self.fc2.weight.data.size()[0])
         nn.init.uniform_(self.fc2.weight.data, -f2, f2)
         nn.init.uniform_(self.fc2.bias.data, -f2, f2)
@@ -196,6 +191,7 @@ class ActorNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda'
 
         self.to(self.device)
 
@@ -212,7 +208,6 @@ class ActorNetwork(nn.Module):
         x = self.fc1(x.view(-1, self.fc_input))
         x = self.bn4(x)
         x = F.relu(x)
-        x = self.dropout(x)
         x = self.fc2(x)
         x = self.bn5(x)
         x = F.relu(x)
@@ -231,7 +226,7 @@ class ActorNetwork(nn.Module):
 
 class Agent(object):
     def __init__(self, alpha, beta, input_dims, tau, gamma=0.99, n_actions=2,
-                 max_size=300000, layer1_size=300, batch_size=64):
+                 max_size=100000, layer1_size=300, batch_size=64):
         """
 
         :param alpha: learning rate for actor network
@@ -267,17 +262,16 @@ class Agent(object):
         observation = self.normalize_frame(observation)  # normalize
         mu = self.actor(observation).to(self.actor.device, dtype=torch.float)
         mu_prime = mu + torch.tensor(self.noise(), dtype=torch.float).to(self.actor.device)
-        # print('mu : {}, mu_prime : {}'.format(mu.item(), mu_prime.item()))
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
 
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
 
-    def learn(self):
+    def learn(self, current_step):
         if self.memory.mem_cntr < self.batch_size:
             return
-
+        
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)
         reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)
         done = torch.tensor(done, dtype=torch.uint8).to(self.critic.device)
@@ -291,7 +285,6 @@ class Agent(object):
 
         new_state = self.normalize_frame(new_state)
         state = self.normalize_frame(state)
-
         target_actions = self.target_actor.forward(new_state)
         critic_value_ = self.target_critic.forward(new_state, target_actions)
         critic_value = self.critic.forward(state, action)
@@ -303,21 +296,22 @@ class Agent(object):
         target = target.view(self.batch_size, 1)
 
         self.critic.train()
-        self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
+        self.critic.optimizer.zero_grad()
         critic_loss.backward()
         self.critic.optimizer.step()
 
         self.critic.eval()
-        self.actor.optimizer.zero_grad()
         mu = self.actor.forward(state)
         self.actor.train()
         actor_loss = -self.critic.forward(state, mu)
         actor_loss = torch.mean(actor_loss)
+        self.actor.optimizer.zero_grad()
         actor_loss.backward()
         self.actor.optimizer.step()
 
-        self.update_network_parameters()
+        if current_step % 100 == 0:
+            self.update_network_parameters()
 
     def update_network_parameters(self, tau=None):
         if tau is None:
@@ -351,7 +345,7 @@ class Agent(object):
         return mu.cpu().detach().numpy()
 
     def normalize_frame(self, frames):
-        return 1 - frames / 255
+        return frames.to(torch.float) / 255
 
     def save_models(self):
         self.actor.save_checkpoint()
