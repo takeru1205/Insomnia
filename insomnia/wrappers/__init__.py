@@ -2,3 +2,5 @@ from insomnia.wrappers.frame_stack import FrameObsWrapper
 from insomnia.wrappers.frame_stack import FrameConvertWrapper
 from insomnia.wrappers.frame_stack import FrameStackWrapper
 from insomnia.wrappers.frame_stack import ForPytorchWrapper
+from insomnia.wrappers.frame_stack import GrayFrameObsWrapper
+from insomnia.wrappers.frame_stack import GrayFrameStackWrapper
