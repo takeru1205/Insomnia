@@ -1,14 +1,12 @@
 import sys
 
 sys.path.append('../')
-# from insomnia.models import Agent
 from insomnia.models import ddpg
 from insomnia.wrappers import FrameObsWrapper, FrameStackWrapper, ForPytorchWrapper
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from insomnia.utils import FrameStackWrapper, FrameObsWrapper, ForPytorchWrapper
 from torch.utils.tensorboard import SummaryWriter
 from copy import deepcopy
 import logging
@@ -71,7 +69,7 @@ while True:
         # new_state -= state # from PyTorch DQN tutorial
         logging.debug('action : {}'.format(act))
         agent.remember(state, act, reward, new_state, int(done))
-        agent.learn(current_step)
+        agent.learn(current_step, writer)
         score += reward
         current_step += 1
     score_history.append(score)

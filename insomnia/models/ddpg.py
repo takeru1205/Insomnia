@@ -208,7 +208,7 @@ class Agent(object):
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
 
-    def learn(self, current_step):
+    def learn(self, current_step, writer):
         if self.memory.mem_cntr < self.batch_size:
             return
 
@@ -237,6 +237,7 @@ class Agent(object):
 
         self.critic.train()
         critic_loss = F.mse_loss(target, critic_value)
+        writer.add_scalar("Loss/Critic", critic_loss, current_step)
         self.critic.optimizer.zero_grad()
         critic_loss.backward()
         self.critic.optimizer.step()
@@ -246,6 +247,7 @@ class Agent(object):
         self.actor.train()
         actor_loss = -self.critic.forward(state, mu)
         actor_loss = torch.mean(actor_loss)
+        writer.add_scalar("Loss/Actor", actor_loss, current_step)
         self.actor.optimizer.zero_grad()
         actor_loss.backward()
         self.actor.optimizer.step()

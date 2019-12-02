@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append('../')
-from insomnia.numeric_models import Agent
+from insomnia.numeric_models import ddpg
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 env = gym.make('LunarLanderContinuous-v2')
-agent = Agent(alpha=0.000025, beta=0.00025, input_dims=[8], tau=0.001, env=env,
+agent = ddpg.Agent(alpha=0.000025, beta=0.00025, input_dims=[8], tau=0.001, env=env,
               batch_size=64, layer1_size=400, layer2_size=300, n_actions=2)
 
 # agent.load_models()
