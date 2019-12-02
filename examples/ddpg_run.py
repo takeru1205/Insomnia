@@ -1,20 +1,20 @@
 import sys
 
 sys.path.append('../')
-from insomnia.models import Agent
+# from insomnia.models import Agent
+from insomnia.models import ddpg
+from insomnia.wrappers import FrameObsWrapper, FrameStackWrapper, ForPytorchWrapper
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 from insomnia.utils import FrameStackWrapper, FrameObsWrapper, ForPytorchWrapper
 from torch.utils.tensorboard import SummaryWriter
-import torch
 from copy import deepcopy
 import logging
 import datetime
-from PIL import Image
-import slackweb
-from config import URL
+# import slackweb
+# from config import URL
 
 logging.basicConfig(filename='tmp/ddpg/logger.log', level=logging.INFO)
 
@@ -28,10 +28,10 @@ writer = SummaryWriter(log_dir=log_dir)
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-slack = slackweb.Slack(url=URL)
-slack.notify(text='===============================')
-slack.notify(text='======= Training Start!! ======')
-slack.notify(text='===============================')
+# slack = slackweb.Slack(url=URL)
+# slack.notify(text='===============================')
+# slack.notify(text='======= Training Start!! ======')
+# slack.notify(text='===============================')
 
 env = gym.make('LunarLanderContinuous-v2')
 # env = gym.make('MountainCarContinuous-v0')
@@ -42,7 +42,7 @@ env = ForPytorchWrapper(env)
 
 state = env.reset()
 
-agent = Agent(alpha=0.0001, beta=0.0001, input_dims=[12, 100, 100], tau=0.001,
+agent = ddpg.Agent(alpha=0.0001, beta=0.0001, input_dims=[12, 100, 100], tau=0.001,
               batch_size=128, layer1_size=300, n_actions=2)
 
 # agent.load_models()
@@ -98,7 +98,7 @@ while True:
         writer.add_scalar("test/total-reward", test_score, i)
         if i % 100 == 0:
             slack_text = 'Episode : {} \n Test Score : {} \n Test Steps : {} \n 100Episodes Average Score : {}'.format(i, test_score, test_steps, score_mean)
-            slack.notify(text=slack_text)
+            # slack.notify(text=slack_text)
 
     print('episode ', i, 'score %.2f' % score,
           'trailing 100 games avg %.3f' % score_mean)

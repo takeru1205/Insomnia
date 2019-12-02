@@ -57,7 +57,7 @@ class CriticNetwork(nn.Module):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.to(self.device)
-    
+
     def forward(self, state, action):
         state_value = self.conv1(state)
         state_value = self.bn1(state_value)
@@ -132,7 +132,7 @@ class ActorNetwork(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        
+
         self.to(self.device)
 
     def forward(self, state):
@@ -211,7 +211,7 @@ class Agent(object):
     def learn(self, current_step):
         if self.memory.mem_cntr < self.batch_size:
             return
-        
+
         state, action, reward, new_state, done = self.memory.sample_buffer(self.batch_size)
         reward = torch.tensor(reward, dtype=torch.float).to(self.critic.device)
         done = torch.tensor(done, dtype=torch.uint8).to(self.critic.device)
