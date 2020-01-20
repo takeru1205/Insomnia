@@ -41,8 +41,11 @@ class ActorCritic(nn.Module):
         super().__init__()
 
         self.actor = Actor()
+        self.actor.cuda()
         self.critic1 = Critic()
         self.critic2 = Critic()
+        self.critic1.cuda()
+        self.critic2.cuda()
 
         self.act_limit = act_limit
 
@@ -52,8 +55,11 @@ class ActorCritic(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
         self.actor_target = Actor()
+        self.actor_target.cuda()
         self.critic1_target = Critic()
         self.critic2_target = Critic()
+        self.critic1_target.cuda()
+        self.critic2_target.cuda()
 
         self.copy_params()
 
@@ -62,9 +68,9 @@ class ActorCritic(nn.Module):
         self.critic1_target.load_state_dict(self.critic1.state_dict())
         self.critic2_target.load_state_dict(self.critic2.state_dict())
 
-    def get_action(self, obs):
+    def get_action(self, obs, noise_scale):
         pi = self.act_limit * self.actor(obs)
-        pi += self.act_limit * torch.rand_like(pi)
+        pi += noise_scale * torch.rand_like(pi)
         pi.clamp(max=self.act_limit, min=-self.act_limit)
         return pi.squeeze()
 
@@ -92,7 +98,7 @@ class ActorCritic(nn.Module):
         q1 = self.critic1_target(obs, pi.reshape(-1, 1))
         q2 = self.critic2_target(obs, pi.reshape(-1, 1))
         q = torch.min(q1, q2)
-        return (rewards + gamma * (1-done) * q.squeeze()).detach()
+        return (rewards + gamma * (1-done) * q.squeeze().cpu()).detach()
 
     def q_function(self, obs, detach=True, action=None):
         # compute Q(s, a) or Q(s, mu(s))
@@ -104,6 +110,11 @@ class ActorCritic(nn.Module):
             pi = pi.detach()
         return self.critic1(obs, pi.reshape(-1, 1)).squeeze(),\
                self.critic2(obs, pi.reshape(-1, 1)).squeeze()
+    
+    def save_weights(self, epoch):
+        torch.save(self.actor.state_dict(), 'weights/actor_{}.pth'.format(epoch))
+        torch.save(self.critic1.state_dict(), 'weights/critic1_{}.pth'.format(epoch))
+        torch.save(self.critic2.state_dict(), 'weights/critic2_{}.pth'.format(epoch))
 
 
 

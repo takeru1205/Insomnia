@@ -6,14 +6,19 @@ import gym
 import numpy as np
 from models import Actor, Critic, ActorCritic
 from replay_buffer import ReplayBuffer
+from datetime import datetime
+from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 
-def td3(steps_per_epoch=5000, epochs=100, gamma=0.99, polyak=0.995, pi_lr=1e-3,
-        q_lr=1e-3, batch_size=100, start_steps=10000, act_noise=0.1, target_noise=0.2,
+def td3(steps_per_epoch=5000, epochs=1000, gamma=0.99, polyak=0.995, pi_lr=1e-3,
+        q_lr=1e-3, batch_size=100, start_steps=50000, act_noise=0.1, target_noise=0.2,
         noise_clip=0.5, max_ep_len=1000, policy_delay=2):
-    replay_buffer = ReplayBuffer(10000, [3], 1)
+    replay_buffer = ReplayBuffer(int(1e6), [3], 1)
 
     env = gym.make('Pendulum-v0')
+
+    writer = SummaryWriter(log_dir="logs/numeric")
 
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
@@ -24,8 +29,10 @@ def td3(steps_per_epoch=5000, epochs=100, gamma=0.99, polyak=0.995, pi_lr=1e-3,
     critic2_optimizer = optim.Adam(actor_critic.critic2.parameters(), q_lr)
     actor_optimizer = optim.Adam(actor_critic.actor.parameters(), pi_lr)
 
-    obs, ret, done, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+    obs, ret, done, ep_ret, ep_len, cum_reward = env.reset(), 0, False, 0, 0, []
     total_steps = steps_per_epoch * epochs
+
+    epoch = 0
 
     for t in range(total_steps):
         # if t > 50000:
@@ -33,11 +40,12 @@ def td3(steps_per_epoch=5000, epochs=100, gamma=0.99, polyak=0.995, pi_lr=1e-3,
             env.render()
         if t > start_steps:
             obs_tens = torch.from_numpy(obs).float().reshape(1, -1)
-            act = actor_critic.get_action(obs_tens, act_noise).detach().numpy().reshape(-1)
+            act = actor_critic.get_action(obs_tens.cuda(), act_noise).detach().cpu().numpy().reshape(-1)
         else:
             act = env.action_space.sample()
 
         obs2, ret, done, _ = env.step(act)
+        cum_reward.append(ret)
 
         ep_ret += ret
         ep_len += 1
@@ -49,15 +57,16 @@ def td3(steps_per_epoch=5000, epochs=100, gamma=0.99, polyak=0.995, pi_lr=1e-3,
         obs = obs2
 
         if done or (ep_len == max_ep_len):
-            for j in range(ep_len):
+            epoch += 1
+            for j in tqdm(range(ep_len)):
                 obs1_tens, obs2_tens, acts_tens, rews_tens, done_tens = replay_buffer.sample_buffer(batch_size)
                 # compute Q(s, a)
-                q1, q2 = actor_critic.q_function(obs1_tens, action=acts_tens)
+                q1, q2 = actor_critic.q_function(obs1_tens.cuda(), action=acts_tens.cuda())
                 # compute r + gamma * (1 - d) * Q(s', mu_targ(s'))
-                pi_targ = actor_critic.get_target_action(obs2_tens, target_noise, noise_clip)
-                q_targ = actor_critic.compute_target(obs2_tens, pi_targ, gamma, rews_tens, done_tens)
+                pi_targ = actor_critic.get_target_action(obs2_tens.cuda(), target_noise, noise_clip)
+                q_targ = actor_critic.compute_target(obs2_tens.cuda(), pi_targ.cuda(), gamma, rews_tens, done_tens)
                 # compute (Q(s,a) - y(r, s', d))^2
-                q_loss = (q1-q_targ).pow(2).mean() + (q2 - q_targ).pow(2).mean()
+                q_loss = (q1.cpu()-q_targ.cpu()).pow(2).mean() + (q2.cpu() - q_targ.cpu()).pow(2).mean()
 
                 critic1_optimizer.zero_grad()
                 critic2_optimizer.zero_grad()
@@ -67,7 +76,7 @@ def td3(steps_per_epoch=5000, epochs=100, gamma=0.99, polyak=0.995, pi_lr=1e-3,
 
                 if j % policy_delay == 0:
                     # compute Q(s, mu(s))
-                    actor_loss, _ = actor_critic.q_function(obs1_tens, detach=False)
+                    actor_loss, _ = actor_critic.q_function(obs1_tens.cuda(), detach=False)
                     actor_loss = -actor_loss.mean()
                     actor_optimizer.zero_grad()
                     actor_loss.backward()
@@ -75,9 +84,13 @@ def td3(steps_per_epoch=5000, epochs=100, gamma=0.99, polyak=0.995, pi_lr=1e-3,
 
                     # compute tau * tar_p + (1 - tau) * main_p
                     actor_critic.update_target(polyak)
-
-            obs, ret, done, ep_ret, ep_len = env.reset(), 0, False, 0, 0
-
+            print('[{}] epoch is : {}, cumulative reward : {}'.format(datetime.now(), epoch, np.sum(np.array(cum_reward))))
+            writer.add_scalar("reward/mean", np.mean(np.array(cum_reward)), epoch)
+            writer.add_scalar("reward/sum", np.sum(np.array(cum_reward)), epoch)
+            obs, ret, done, ep_ret, ep_len, cum_reward = env.reset(), 0, False, 0, 0, []
+        
+        if epoch % 100 == 0:
+            actor_critic.save_weights(epoch)
 
 if __name__ == '__main__':
     td3()
