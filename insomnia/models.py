@@ -106,12 +106,12 @@ class ActorNetwork(nn.Module):
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
         self.fc_input = 1024
 
-        self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
-        self.bn3 = nn.BatchNorm2d(64)
+        self.conv1 = nn.Conv2d(4, 12, kernel_size=4, stride=2)
+        self.bn1 = nn.BatchNorm2d(12)
+        self.conv2 = nn.Conv2d(12, 32, kernel_size=4, stride=2)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.conv3 = nn.Conv2d(32, 32, kernel_size=4, stride=2)
+        self.bn3 = nn.BatchNorm2d(32)
 
         self.fc1 = nn.Linear(self.fc_input, 1280)
         f1 = 1 / np.sqrt(self.fc1.weight.data.size()[0])

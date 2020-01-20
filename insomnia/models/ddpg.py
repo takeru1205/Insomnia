@@ -9,6 +9,8 @@ import torch.optim as optim
 from insomnia.explores import GaussianActionNoise
 from insomnia.replay_buffers import ReplayBuffer
 
+from PIL import Image
+
 
 class CriticNetwork(nn.Module):
     def __init__(self, beta, input_dims, fc1_dims, n_actions, name, chkpt_dir='tmp/ddpg'):
@@ -25,13 +27,13 @@ class CriticNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 1024
+        self.fc_input = 3136
 
-        self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=12, stride=4)
         self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=6, stride=2)
         self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
         self.bn3 = nn.BatchNorm2d(64)
 
         self.fc1 = nn.Linear(self.fc_input, 1280)
@@ -104,13 +106,13 @@ class ActorNetwork(nn.Module):
         self.fc1_dims = fc1_dims
         self.n_actions = n_actions
         self.checkpoint_file = os.path.join(chkpt_dir, name + '_ddpg')
-        self.fc_input = 1024
+        self.fc_input = 3136
 
-        self.conv1 = nn.Conv2d(12, 32, kernel_size=8, stride=4)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=12, stride=4)
         self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=6, stride=2)
         self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
         self.bn3 = nn.BatchNorm2d(64)
 
         self.fc1 = nn.Linear(self.fc_input, 1280)
@@ -208,7 +210,7 @@ class Agent(object):
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
 
-    def learn(self, current_step, writer):
+    def learn(self, current_step, writer, episode):
         if self.memory.mem_cntr < self.batch_size:
             return
 
@@ -237,7 +239,7 @@ class Agent(object):
 
         self.critic.train()
         critic_loss = F.mse_loss(target, critic_value)
-        writer.add_scalar("Loss/Critic", critic_loss, current_step)
+        writer.add_scalar("Loss/Critic", critic_loss, episode)
         self.critic.optimizer.zero_grad()
         critic_loss.backward()
         self.critic.optimizer.step()
@@ -247,7 +249,7 @@ class Agent(object):
         self.actor.train()
         actor_loss = -self.critic.forward(state, mu)
         actor_loss = torch.mean(actor_loss)
-        writer.add_scalar("Loss/Actor", actor_loss, current_step)
+        writer.add_scalar("Loss/Actor", actor_loss, episode)
         self.actor.optimizer.zero_grad()
         actor_loss.backward()
         self.actor.optimizer.step()
