@@ -153,6 +153,9 @@ def main(args):
             episode_timesteps = 0
             episode_num += 1
 
+        if t % 100 == 0:
+            policy.save(file_name)
+
 
 if __name__ == '__main__':
     # td3()
