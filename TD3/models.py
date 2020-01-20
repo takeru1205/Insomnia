@@ -21,15 +21,34 @@ class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
         self.fc1 = nn.Linear(3+1, 400)
-        self.fc2 = nn.Linear(300, 300)
+        self.fc2 = nn.Linear(400, 300)
         self.fc3 = nn.Linear(300, 1)
 
+        self.fc4 = nn.Linear(3+1, 400)
+        self.fc5 = nn.Linear(400, 300)
+        self.fc6 = nn.Linear(300, 1)
+
     def forward(self, action, obs):
-        x = torch.cat([obs, action], dim=1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        xu = torch.cat([obs, action], dim=1)
+
+        x1 = F.relu(self.fc1(xu))
+        x1 = F.relu(self.fc2(x1))
+        x1 = self.fc3(x1)
+
+        x2 = F.relu((self.fc4(xu)))
+        x2 = F.relu((self.fc5(x2)))
+        x2 = self.fc6(x2)
+
+        return x1, x2
+
+    def q1(self, action, obs):
+        xu = torch.cat([action, obs], dim=1)
+
+        x1 = F.relu(self.fc1(xu))
+        x1 = F.relu(self.fc2(x1))
+        x1 = F.relu(x1)
+
+        return x1
 
 
 class ActorCritic(nn.Module):
