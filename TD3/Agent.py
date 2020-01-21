@@ -65,7 +65,7 @@ class TD3:
         current_q1, current_q2 = self.critic(states.to(self.device), actions.to(self.device))
 
         # Compute critic loss
-        critic_loss = F.mse_loss(current_q1[:,0].cpu(), target_q) + F.mse_loss(current_q2[:,0].cpu(), target_q)
+        critic_loss = F.mse_loss(current_q1[:,0], target_q.to(self.device)) + F.mse_loss(current_q2[:,0], target_q.to(device))
 
         # optimize the critic
         self.critic_optimizer.zero_grad()
