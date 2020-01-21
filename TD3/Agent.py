@@ -37,10 +37,11 @@ class TD3:
 
     def select_action(self, state, noise=0.1):
         action = self.actor(state.to(self.device)).data.cpu().numpy().flatten()
-        if noise != 0:
-            action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
+        # if noise != 0:
+            # action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
 
-        return action.clip(self.env.action_space.low, self.env.action_space.high)
+        # return action.clip(self.env.action_space.low, self.env.action_space.high)
+        return action
 
     def train(self, replay_buffer, batch_size=128):
         self.total_it += 1
@@ -49,7 +50,7 @@ class TD3:
 
         with torch.no_grad():
             noise = (torch.randn_like(actions.to(self.device))
-                     * self.policy_noise).clamp(-self.max_action, self.max_action)
+                     * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
 
             next_action = (self.actor_target(states_.to(self.device))
                            + noise).clamp(-self.max_action, self.max_action)
