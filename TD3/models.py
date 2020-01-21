@@ -4,11 +4,11 @@ import torch.nn.functional as F
 
 
 class Actor(nn.Module):
-    def __init__(self):
+    def __init__(self, state_dim, action_dim):
         super(Actor, self).__init__()
-        self.fc1 = nn.Linear(3, 400)
+        self.fc1 = nn.Linear(state_dim, 400)
         self.fc2 = nn.Linear(400, 300)
-        self.fc3 = nn.Linear(300, 1)
+        self.fc3 = nn.Linear(300, action_dim)
 
     def forward(self, obs):
         x = F.relu(self.fc1(obs))
@@ -18,19 +18,18 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    def __init__(self):
+    def __init__(self, state_dim, action_dim):
         super(Critic, self).__init__()
-        self.fc1 = nn.Linear(3+1, 400)
+        self.fc1 = nn.Linear(state_dim+action_dim, 400)
         self.fc2 = nn.Linear(400, 300)
         self.fc3 = nn.Linear(300, 1)
 
-        self.fc4 = nn.Linear(3+1, 400)
+        self.fc4 = nn.Linear(state_dim+action_dim, 400)
         self.fc5 = nn.Linear(400, 300)
         self.fc6 = nn.Linear(300, 1)
 
     def forward(self, action, obs):
         xu = torch.cat([obs, action], dim=1)
-
         x1 = F.relu(self.fc1(xu))
         x1 = F.relu(self.fc2(x1))
         x1 = self.fc3(x1)
@@ -42,11 +41,10 @@ class Critic(nn.Module):
         return x1, x2
 
     def q1(self, action, obs):
-        xu = torch.cat([action, obs], dim=1)
-
+        xu = torch.cat([obs, action], dim=1)
         x1 = F.relu(self.fc1(xu))
         x1 = F.relu(self.fc2(x1))
-        x1 = F.relu(x1)
+        x1 = self.fc3(x1)
 
         return x1
 

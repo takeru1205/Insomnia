@@ -7,14 +7,14 @@ from models import Actor, Critic
 
 
 class TD3:
-    def __init__(self, env, max_action, gamma=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
-        self.actor = Actor()
-        self.actor_target = Actor()
+    def __init__(self, env, state_dim, action_dim, max_action, gamma=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
+        self.actor = Actor(state_dim, action_dim)
+        self.actor_target = Actor(state_dim, action_dim)
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
 
-        self.critic = Critic()
-        self.critic_target = Critic()
+        self.critic = Critic(state_dim, action_dim)
+        self.critic_target = Critic(state_dim, action_dim)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
 
@@ -26,11 +26,17 @@ class TD3:
         self.policy_freq = policy_freq
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        self.actor.to(self.device)
+        self.actor_target.to(self.device)
+        self.critic.to(self.device)
+        self.critic_target.to(self.device)
+
         self.env = env
         self.total_it = 0
 
     def select_action(self, state, noise=0.1):
-        action = self.actor(state.to(self.device)).cpu().data.numpy().flatten()
+        action = self.actor(state.to(self.device)).data.cpu().numpy().flatten()
         if noise != 0:
             action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
 
@@ -53,13 +59,13 @@ class TD3:
             target_q = torch.min(target_q1, target_q2)
             # target_q = rewards + terminal * self.gamma + target_q.cpu()
             # target_q = rewards + (terminal.reshape(256, 1) * self.gamma * target_q).detach()
-            target_q = rewards + terminal * self.gamma * target_q
+            target_q = rewards + terminal * self.gamma * target_q[:,0].cpu()
 
         # Get current Q value
         current_q1, current_q2 = self.critic(states.to(self.device), actions.to(self.device))
 
         # Compute critic loss
-        critic_loss = F.mse_loss(current_q1, target_q) + F.mse_loss(current_q2, target_q)
+        critic_loss = F.mse_loss(current_q1[:,0].cpu(), target_q) + F.mse_loss(current_q2[:,0].cpu(), target_q)
 
         # optimize the critic
         self.critic_optimizer.zero_grad()

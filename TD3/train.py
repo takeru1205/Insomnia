@@ -98,19 +98,21 @@ def td3(steps_per_epoch=5000, epochs=1000, gamma=0.99, polyak=0.995, pi_lr=1e-3,
 
 
 def main(args):
-    file_name = 'td3_pendulum'
+    file_name = 'td3_lunalander'
 
-    writer = SummaryWriter(log_dir="logs/filename_{}".format('numeric'))
+    writer = SummaryWriter(log_dir="logs/{}_{}".format(file_name, 'numeric'))
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    env = gym.make('Pendulum-v0')
+    env = gym.make('LunarLanderContinuous-v2')
 
-    max_action = float(env.action_space.high[0])
+    max_action = float(env.action_space.high[0])    
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
 
-    replay_buffer = ReplayBuffer(int(1e6), [3], 1)
+    replay_buffer = ReplayBuffer(int(1e6), [state_dim], action_dim)
 
-    policy = TD3(env, max_action)
+    policy = TD3(env, state_dim, action_dim, max_action)
 
     state, done = env.reset(), False
     episode_reward = 0
@@ -127,8 +129,10 @@ def main(args):
         else:
             obs_tens = torch.from_numpy(state).float().reshape(1, -1).to(device)
             # action = np.clip(policy.select_action(obs_tens) + np.random.normal(0, max_action * args.expl_noise, size=3), -max_action, max_action)
-            action = np.clip(policy.select_action(obs_tens) + np.random.normal(0, max_action * args.expl_noise), -max_action, max_action)
-
+            action = np.clip(policy.select_action(obs_tens.to(device)) + np.random.normal(0, max_action * args.expl_noise), -max_action, max_action)
+        
+        if t > int(6e5):
+            env.render()
         # Perform action
         next_state, reward, done, _ = env.step(action)
         done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
