@@ -37,11 +37,10 @@ class TD3:
 
     def select_action(self, state, noise=0.1):
         action = self.actor(state.to(self.device)).data.cpu().numpy().flatten()
-        # if noise != 0:
-            # action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
+        if noise != 0:
+            action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
 
-        # return action.clip(self.env.action_space.low, self.env.action_space.high)
-        return action
+        return action.clip(self.env.action_space.low, self.env.action_space.high)
 
     def train(self, replay_buffer, batch_size=128):
         self.total_it += 1
@@ -66,7 +65,7 @@ class TD3:
         current_q1, current_q2 = self.critic(states.to(self.device), actions.to(self.device))
 
         # Compute critic loss
-        critic_loss = F.mse_loss(current_q1[:,0], target_q.to(self.device)) + F.mse_loss(current_q2[:,0], target_q.to(device))
+        critic_loss = F.mse_loss(current_q1[:,0], target_q.to(self.device)) + F.mse_loss(current_q2[:,0], target_q.to(self.device))
 
         # optimize the critic
         self.critic_optimizer.zero_grad()

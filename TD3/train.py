@@ -13,13 +13,16 @@ from torch.utils.tensorboard import SummaryWriter
 import argparse
 
 def main(args):
-    file_name = 'td3_lunalander'
+    file_name = 'td3_lunalander_v2'
 
     writer = SummaryWriter(log_dir="logs/{}_{}".format(file_name, 'numeric'))
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     env = gym.make('LunarLanderContinuous-v2')
+    env.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
     max_action = float(env.action_space.high[0])    
     state_dim = env.observation_space.shape[0]
@@ -44,9 +47,10 @@ def main(args):
         else:
             obs_tens = torch.from_numpy(state).float().reshape(1, -1).to(device)
             # action = np.clip(policy.select_action(obs_tens) + np.random.normal(0, max_action * args.expl_noise, size=3), -max_action, max_action)
-            action = np.clip(policy.select_action(obs_tens.to(device)) + np.random.normal(0, max_action * args.expl_noise), -max_action, max_action)
+            # action = np.clip(policy.select_action(obs_tens.to(device)) + np.random.normal(0, max_action * args.expl_noise), -max_action, max_action)
+            action = policy.select_action(obs_tens.to(device))
         
-        if t > int(6e5):
+        if episode_num > int(1000):
             env.render()
         # Perform action
         next_state, reward, done, _ = env.step(action)
@@ -81,7 +85,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", default="TD3")  # Policy name (TD3, DDPG or OurDDPG)
     parser.add_argument("--env", default="HalfCheetah-v2")  # OpenAI gym environment name
-    parser.add_argument("--seed", default=0, type=int)  # Sets Gym, PyTorch and Numpy seeds
+    parser.add_argument("--seed", default=42, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--start_timesteps", default=1e4, type=int)  # Time steps initial random policy is used
     parser.add_argument("--eval_freq", default=5e3, type=int)  # How often (time steps) we evaluate
     parser.add_argument("--max_timesteps", default=1e6, type=int)  # Max time steps to run environment
