@@ -41,7 +41,7 @@ class TD3:
         action = self.actor(state.to(self.device))
         action = action.data.cpu().numpy().flatten()
         if noise != 0:
-            action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
+            action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0])) * self.max_action
 
         return action.clip(self.env.action_space.low, self.env.action_space.high)
 
