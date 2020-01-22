@@ -3,4 +3,5 @@
 __pycache__
 examples/tmp/*
 CONV_TD3/weights/*
+TD3/weights/*
 *.png
