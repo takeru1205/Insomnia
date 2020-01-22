@@ -15,7 +15,7 @@ from frame_stack import GrayFrameObsWrapper, FrameConvertWrapper, GrayFrameStack
 
 
 def main(args):
-    file_name = 'td3_pedulum_10frame_3framestack'
+    file_name = 'td3_pedulum_10fps_3framestack_1fc'
 
     writer = SummaryWriter(log_dir="logs/{}_{}".format(file_name, 'conv'))
 
@@ -36,7 +36,7 @@ def main(args):
 
     replay_buffer = ReplayBuffer(int(1e6), state_dim, action_dim)
 
-    policy = TD3(env, state_dim[0], action_dim, max_action)
+    policy = TD3(env, state_dim, action_dim, max_action)
 
     state, done = env.reset(), False
     episode_reward = 0
