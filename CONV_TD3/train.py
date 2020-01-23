@@ -13,11 +13,12 @@ from torch.utils.tensorboard import SummaryWriter
 import argparse
 from frame_stack import GrayFrameObsWrapper, FrameConvertWrapper, GrayFrameStackWrapper, ForPytorchWrapper 
 
+import cv2
 
 def main(args):
-    file_name = 'td3_pedulum_10fps_3framestack_1fc'
+    file_name = 'td3_pendulum_10fps_3framestack_1fc_clipped'
 
-    writer = SummaryWriter(log_dir="logs/{}_{}".format(file_name, 'conv'))
+    writer = SummaryWriter(log_dir="logs/pendulum/{}_{}".format(file_name, 'conv'))
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -53,10 +54,15 @@ def main(args):
         else:
             # action = np.clip(policy.select_action(obs_tens) + np.random.normal(0, max_action * args.expl_noise, size=3), -max_action, max_action)
             # action = np.clip(policy.select_action(obs_tens.to(device)) + np.random.normal(0, max_action * args.expl_noise), -max_action, max_action)
-            action = policy.select_action(state.to(device))
+            action = policy.select_action(state.to(device), noise=0.2)
+            # [0] = negative, [1] = positive
         
         # Perform action
         next_state, reward, done, _ = env.step(action)
+
+        # image check
+        #cv2.imwrite('tmp/{}.png'.format(t), next_state[0].numpy().transpose((1,2,0)))
+
         done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
 
         # Store data in replay buffer
@@ -80,7 +86,7 @@ def main(args):
             episode_timesteps = 0
             episode_num += 1
 
-        if t % 100 == 0:
+        if episode_timesteps % 100 == 0:
             policy.save(file_name)
 
 
@@ -90,7 +96,7 @@ if __name__ == '__main__':
     parser.add_argument("--policy", default="TD3")  # Policy name (TD3, DDPG or OurDDPG)
     parser.add_argument("--env", default="HalfCheetah-v2")  # OpenAI gym environment name
     parser.add_argument("--seed", default=42, type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--start_timesteps", default=4e4, type=int)  # Time steps initial random policy is used
+    parser.add_argument("--start_timesteps", default=int(1e4), type=int)  # Time steps initial random policy is used
     parser.add_argument("--eval_freq", default=5e3, type=int)  # How often (time steps) we evaluate
     parser.add_argument("--max_timesteps", default=1e7, type=int)  # Max time steps to run environment
     parser.add_argument("--expl_noise", default=0.1)  # Std of Gaussian exploration noise
