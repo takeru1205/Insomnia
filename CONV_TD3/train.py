@@ -51,10 +51,12 @@ def main(args):
         # Select action randomly or according to policy
         if t < args.start_timesteps:
             action = env.action_space.sample()
+            _action = action.clip(-1, 1)
         else:
             # action = np.clip(policy.select_action(obs_tens) + np.random.normal(0, max_action * args.expl_noise, size=3), -max_action, max_action)
             # action = np.clip(policy.select_action(obs_tens.to(device)) + np.random.normal(0, max_action * args.expl_noise), -max_action, max_action)
-            action = policy.select_action(state.to(device), noise=0.2)
+            action, _action = policy.select_action(state.to(device), noise=0.2)
+            print(action, _action)
             # [0] = negative, [1] = positive
         
         # Perform action
@@ -66,7 +68,7 @@ def main(args):
         done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
 
         # Store data in replay buffer
-        replay_buffer.store_transition(state, action, reward, next_state, done_bool)
+        replay_buffer.store_transition(state, _action, reward, next_state, done_bool)
 
         state = next_state
         episode_reward += reward

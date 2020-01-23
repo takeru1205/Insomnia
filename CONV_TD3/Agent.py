@@ -35,16 +35,17 @@ class TD3:
         self.env = env
         self.total_it = 0
 
-    def select_action(self, state, noise=0.1):
-        self.actor.eval()
+    def select_action(self, state, noise=0):
         state = self.normalize_frame(state)
         action = self.actor(state.to(self.device))
-        action = action.data.cpu().numpy().flatten()
+        _action = action.data.cpu().numpy().flatten()
         if noise != 0:
-            action = (action * self.max_action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
-        return action.clip(self.env.action_space.low[0], self.env.action_space.high[0])
+            noise =  np.random.normal(0, noise, size=self.env.action_space.shape[0])
+            action = _action * self.max_action + noise
+            _action += noise
+        return action.clip(self.env.action_space.low[0], self.env.action_space.high[0]), _action.clip(-1, 1)
 
-    def train(self, replay_buffer, batch_size=128):
+    def train(self, replay_buffer, batch_size=100):
         self.total_it += 1
 
         states, states_, actions, rewards, terminal = replay_buffer.sample_buffer(batch_size)
@@ -56,8 +57,7 @@ class TD3:
             noise = (torch.randn_like(actions.to(self.device))
                      * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
 
-            next_action = (self.actor_target(states_.to(self.device) * self.max_action)
-                          + noise).clamp(self.env.action_space.low[0], self.env.action_space.high[0])
+            next_action = ((self.actor_target(states_.to(self.device)) + noise)).clamp(-1, 1)
 
             # compute the target Q value
             target_q1, target_q2 = self.critic_target(states_.to(self.device), next_action.to(self.device))
@@ -81,8 +81,6 @@ class TD3:
         if self.total_it % self.policy_freq == 0:
             # Compote actor loss
             actor_loss = -self.critic.q1(states.to(self.device), self.actor(states.to(self.device))).mean()
-
-            self.actor.train()
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
