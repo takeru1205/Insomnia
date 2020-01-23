@@ -41,9 +41,8 @@ class TD3:
         action = self.actor(state.to(self.device))
         action = action.data.cpu().numpy().flatten()
         if noise != 0:
-            action = (action + np.random.normal(0, noise, size=self.env.action_space.shape[0])) * self.max_action
-
-        return action.clip(self.env.action_space.low, self.env.action_space.high)
+            action = (action * self.max_action + np.random.normal(0, noise, size=self.env.action_space.shape[0]))
+        return action.clip(self.env.action_space.low[0], self.env.action_space.high[0])
 
     def train(self, replay_buffer, batch_size=128):
         self.total_it += 1
@@ -57,8 +56,8 @@ class TD3:
             noise = (torch.randn_like(actions.to(self.device))
                      * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
 
-            next_action = (self.actor_target(states_.to(self.device))
-                           + noise).clamp(-self.max_action, self.max_action)
+            next_action = (self.actor_target(states_.to(self.device) * self.max_action)
+                          + noise).clamp(self.env.action_space.low[0], self.env.action_space.high[0])
 
             # compute the target Q value
             target_q1, target_q2 = self.critic_target(states_.to(self.device), next_action.to(self.device))
