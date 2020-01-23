@@ -71,7 +71,7 @@ class GrayFrameObsWrapper(gym.Wrapper):
     def reset(self, **kwargs):
         _ = self.env.reset(**kwargs)
         obs = self.env.render(mode='rgb_array')
-        obs = cv2.resize(obs, (self.img_height, self.img_width), interpolation=cv2.INTER_AREA)
+        obs = cv2.resize(obs[150:350], (self.img_height, self.img_width), interpolation=cv2.INTER_AREA)
         return obs
 
     def step(self, action):
@@ -79,7 +79,7 @@ class GrayFrameObsWrapper(gym.Wrapper):
             _, _, _, _ = self.env.step(action)
         _, reward, done, info = self.env.step(action)
         obs = self.env.render(mode='rgb_array')
-        obs = cv2.resize(obs, (self.img_height, self.img_width), interpolation=cv2.INTER_AREA)
+        obs = cv2.resize(obs[150:350], (self.img_height, self.img_width), interpolation=cv2.INTER_AREA)
         return obs, reward, done, info
 
 
