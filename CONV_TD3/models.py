@@ -51,9 +51,9 @@ class Critic(nn.Module):
         convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(state_dim[2])))
         convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(state_dim[1])))
         linear_input_size = convw * convh * 32
-        self.out1 = nn.Linear(linear_input_size + action_dim, action_dim)
+        self.out1 = nn.Linear(linear_input_size + action_dim, 1)
 
-        self.out2 = nn.Linear(linear_input_size + action_dim, action_dim)
+        self.out2 = nn.Linear(linear_input_size + action_dim, 1)
 
     def forward(self, obs, action):
         x1 = F.relu(self.bn1(self.conv1(obs)))
