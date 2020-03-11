@@ -1,39 +1,67 @@
 import numpy as np
+import torch
 
 
-class ReplayBuffer(object):
-    def __init__(self, max_size, input_shape, n_actions):
-        """ replay buffer(memory) for experience replay
+class ReplayBuffer:
+    """Experience Replay.
 
-        Just sampling experiences randomly.
+    Experience Replay is just sampling randomly from buffer.
 
-        :param max_size: the size of maximum buffer
-        :param input_shape: to store state (for state memory)
-        :param n_actions: to store action (for action memory)
+    Attributes:
+        max_size (int): maximum size of replay buffer.
+        mem_control (int): to point the head of buffer.
+        state_memory (torch.Tensor): the buffer of state.
+        new_state_memory (torch.Tensor): the buffer of next state.
+        action_memory (torch.Tensor): the buffer of action.
+        reward_memory (torch.Tensor): the buffer of reward.
+        terminal_memory(torch.Tensor): the buffer for done or not.
+    """
+    def __init__(self, state_dim, act_dim, max_size=10000):
+        """Initial of ReplayBuffer
+
+        Args:
+            state_dim (list): the dimension of state
+            act_dim (int): the dimension of action
+            max_size (int): maximum size of replay buffer
         """
-        self.mem_size = max_size
-        self.mem_cntr = 0
-        self.state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
-        self.new_state_memory = np.zeros((self.mem_size, *input_shape), dtype=np.uint8)
-        self.action_memory = np.zeros((self.mem_size, n_actions), dtype=np.float16)
-        self.reward_memory = np.zeros(self.mem_size, dtype=np.float)
-        self.terminal_memory = np.zeros(self.mem_size, dtype=np.uint8)
+        self.max_size = max_size
+        self.mem_control = 0
+        self.state_memory = torch.zeros((self.max_size, *state_dim), dtype=torch.double)
+        self.new_state_memory = torch.zeros((self.max_size, *state_dim), dtype=torch.double)
+        self.action_memory = torch.zeros((self.max_size, act_dim), dtype=torch.uint8)
+        self.reward_memory = torch.zeros(self.max_size, dtype=torch.float)
+        self.terminal_memory = torch.zeros(self.max_size, dtype=torch.uint8)
 
     def store_transition(self, state, action, reward, state_, done):
-        index = self.mem_cntr % self.mem_size
-        # self.state_memory[index] = state.cpu()
-        self.state_memory[index] = state
-        # self.new_state_memory[index] = state_.cpu()
-        self.new_state_memory[index] = state_
-        self.action_memory[index] = action
-        self.reward_memory[index] = reward
-        self.terminal_memory[index] = 1 - done
-        self.mem_cntr += 1
+        """To store state transition
+
+        Args:
+            state (np.ndarray): state by observe environment
+            action (np.ndarray): action
+            reward (np.ndarray): reward by agent decided action
+            state_ (np.ndarray): next state by observe environment
+            done (np.ndarray): episode is finished or not
+        """
+        index = self.mem_control % self.max_size
+        self.state_memory[index] = torch.from_numpy(state).to(torch.double)
+        self.new_state_memory[index] = torch.from_numpy(state_).to(torch.double)
+        self.action_memory[index] = torch.tensor(action)
+        self.reward_memory[index] = torch.from_numpy(np.array([reward]).astype(np.float))
+        self.terminal_memory[index] = torch.from_numpy(np.array([1 - done]).astype(np.uint8))
+        self.mem_control += 1
 
     def sample_buffer(self, batch_size):
-        max_mem = min(self.mem_cntr, self.mem_size)
+        """Sampling data randomly from buffer
 
-        batch = np.random.choice(max_mem, batch_size)
+        Args:
+            batch_size (int): number of sampling data
+
+        Returns: :obj:`torch.Tensor` sampling data of the size of batch_size
+
+        """
+        mem_size = min(self.mem_control, self.max_size)
+
+        batch = np.random.choice(mem_size, batch_size)
 
         states = self.state_memory[batch]
         actions = self.action_memory[batch]
@@ -41,4 +69,12 @@ class ReplayBuffer(object):
         states_ = self.new_state_memory[batch]
         terminal = self.terminal_memory[batch]
 
-        return states, actions, rewards, states_, terminal
+        return states, states_, actions, rewards, terminal
+
+    def __len__(self):
+        """
+
+        Returns: :obj:`int` length of buffer
+
+        """
+        return self.mem_control
