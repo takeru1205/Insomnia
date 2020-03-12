@@ -14,15 +14,13 @@ def main():
     np.random.seed(seed)
     torch.manual_seed(seed)
     env = gym.make('CartPole-v0')
-    dqn = models.dqn.DQN(env, cuda=True)
-
-    dqn.print_network()
+    dqn = models.dqn.DQN(env, cuda=True)  # if use gpu, cuda = False
 
     dqn.target_update()
+    recent_10_episodes = deque(maxlen=10)
     for episode in range(3000):
         state = env.reset()
-        recent_10_episodes = deque(maxlen=10)
-        episode_count= 0
+        episode_count = 0
 
         for timestep in range(200):
             action = dqn.decide_action(torch.tensor(state), episode)
@@ -41,11 +39,17 @@ def main():
             dqn.model_update()
 
             if done:
-                recent_10_episodes.append(episode_count)
+                recent_10_episodes.append(episode_count+1)
                 if episode % 10 == 0:
                     print('epoch:{}, timestep:{}, mean of recent 10 time steps:{}'.format(
                         episode, timestep, sum(list(recent_10_episodes)) / 10))
                 break
+
+        if sum(list(recent_10_episodes)) / 10 >= 200:
+            print("Train Completed")
+            # uncomment when save
+            # dqn.save_model("PATH")
+            break
 
         if episode % 10 == 0:
             dqn.target_update()

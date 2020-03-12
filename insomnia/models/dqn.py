@@ -15,7 +15,8 @@ class DQN:
         self.policy_net = simple_net.SimpleNet(env.observation_space.shape[0],
                                                env.action_space.n) if net is None else net
         self.target_net = deepcopy(self.policy_net)
-        self.buffer = replay_buffer.ReplayBuffer([env.observation_space.shape[0]], 1, cuda) if buffer is None else buffer
+        self.buffer = replay_buffer.ReplayBuffer(
+            [env.observation_space.shape[0]], 1, cuda) if buffer is None else buffer
         self.gamma = gamma
         self.criterion = nn.MSELoss() if criterion is None else criterion
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=0.0001) if optimizer is None else optimizer
@@ -25,7 +26,7 @@ class DQN:
             self.target_net.to('cuda')
 
     def decide_action(self, state, episode):
-        epsilon = 0.3 - 0.0001 * episode
+        epsilon = 0.3 - 0.0002 * episode
 
         if epsilon <= random.random():
             with torch.no_grad():
@@ -47,8 +48,8 @@ class DQN:
         state_action_values = self.policy_net(states).gather(1, actions.to(torch.long))
 
         with torch.no_grad():
-            next_action_values = self.target_net(states).max(1)[0].detach()
-            expected_state_action_values = self.gamma * next_action_values + rewards
+            next_state_values = self.target_net(states_).max(1)[0].detach()
+            expected_state_action_values = self.gamma * next_state_values + rewards
 
         loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
@@ -59,10 +60,8 @@ class DQN:
     def store_transition(self, state, action, reward, state_, done):
         self.buffer.store_transition(state, action, reward, state_, done)
 
-    def print_network(self):
-        print(self.policy_net)
+    def save_model(self, path):
+        torch.save(self.policy_net.state_dict(), path)
 
-
-
-
-
+    def load_model(self, path):
+        self.policy_net.load_state_dict(torch.load(path))
