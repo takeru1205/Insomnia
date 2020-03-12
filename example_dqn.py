@@ -1,3 +1,4 @@
+import random
 from collections import deque
 
 import numpy as np
@@ -8,22 +9,27 @@ from insomnia import models
 
 
 def main():
+    seed = 42
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
     env = gym.make('CartPole-v0')
-    dqn = models.dqn.DQN(env)
+    dqn = models.dqn.DQN(env, cuda=True)
+
+    dqn.print_network()
 
     dqn.target_update()
-    for episode in range(2000):
+    for episode in range(3000):
         state = env.reset()
         recent_10_episodes = deque(maxlen=10)
-        total_step = 0
+        episode_count= 0
 
         for timestep in range(200):
             action = dqn.decide_action(torch.tensor(state), episode)
             next_state, reward, done, _ = env.step(action)
 
-            total_step += 1
-
             terminal = 0
+            episode_count += 1
 
             if done:
                 terminal = 1
@@ -35,9 +41,11 @@ def main():
             dqn.model_update()
 
             if done:
+                recent_10_episodes.append(episode_count)
                 if episode % 10 == 0:
                     print('epoch:{}, timestep:{}, mean of recent 10 time steps:{}'.format(
                         episode, timestep, sum(list(recent_10_episodes)) / 10))
+                break
 
         if episode % 10 == 0:
             dqn.target_update()

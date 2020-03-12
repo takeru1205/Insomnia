@@ -16,7 +16,7 @@ class ReplayBuffer:
         reward_memory (torch.Tensor): the buffer of reward.
         terminal_memory(torch.Tensor): the buffer for done or not.
     """
-    def __init__(self, state_dim, act_dim, max_size=10000):
+    def __init__(self, state_dim, act_dim, cuda, max_size=10000):
         """Initial of ReplayBuffer
 
         Args:
@@ -25,9 +25,10 @@ class ReplayBuffer:
             max_size (int): maximum size of replay buffer
         """
         self.max_size = max_size
+        self.cuda = cuda
         self.mem_control = 0
-        self.state_memory = torch.zeros((self.max_size, *state_dim), dtype=torch.double)
-        self.new_state_memory = torch.zeros((self.max_size, *state_dim), dtype=torch.double)
+        self.state_memory = torch.zeros((self.max_size, *state_dim), dtype=torch.float)
+        self.new_state_memory = torch.zeros((self.max_size, *state_dim), dtype=torch.float)
         self.action_memory = torch.zeros((self.max_size, act_dim), dtype=torch.uint8)
         self.reward_memory = torch.zeros(self.max_size, dtype=torch.float)
         self.terminal_memory = torch.zeros(self.max_size, dtype=torch.uint8)
@@ -43,8 +44,8 @@ class ReplayBuffer:
             done (np.ndarray): episode is finished or not
         """
         index = self.mem_control % self.max_size
-        self.state_memory[index] = torch.from_numpy(state).to(torch.double)
-        self.new_state_memory[index] = torch.from_numpy(state_).to(torch.double)
+        self.state_memory[index] = torch.from_numpy(state)
+        self.new_state_memory[index] = torch.from_numpy(state_)
         self.action_memory[index] = torch.tensor(action)
         self.reward_memory[index] = torch.from_numpy(np.array([reward]).astype(np.float))
         self.terminal_memory[index] = torch.from_numpy(np.array([1 - done]).astype(np.uint8))
@@ -68,6 +69,9 @@ class ReplayBuffer:
         rewards = self.reward_memory[batch]
         states_ = self.new_state_memory[batch]
         terminal = self.terminal_memory[batch]
+
+        if self.cuda:
+            return states.to('cuda'), states_.to('cuda'), actions.to('cuda'), rewards.to('cuda'), terminal
 
         return states, states_, actions, rewards, terminal
 

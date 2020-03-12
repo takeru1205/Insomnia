@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torch
 
 
 class SimpleNet(nn.Module):
@@ -10,7 +11,6 @@ class SimpleNet(nn.Module):
         self.fc3 = nn.Linear(32, act_dim)
 
     def forward(self, x):
-        print(x.type)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
