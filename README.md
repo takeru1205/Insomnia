@@ -4,7 +4,7 @@ Reinforcement Learning Library PyTorch backend.
 ## Implementation
 - [ ] DDPG
 - [ ] HER
-- [-] DQN
+- [x] DQN
 - [ ] A2C
 - [ ] Apex
 
