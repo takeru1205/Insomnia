@@ -38,10 +38,10 @@ class ReplayBuffer:
 
         Args:
             state (np.ndarray): state by observe environment
-            action (np.ndarray): action
-            reward (np.ndarray): reward by agent decided action
+            action (int): action
+            reward (int): reward by agent decided action
             state_ (np.ndarray): next state by observe environment
-            done (np.ndarray): episode is finished or not
+            done (bool): episode is finished or not
         """
         index = self.mem_control % self.max_size
         self.state_memory[index] = torch.from_numpy(state)
