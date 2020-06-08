@@ -5,6 +5,7 @@ Reinforcement Learning Library PyTorch backend.
 - [ ] DDPG
 - [ ] HER
 - [x] DQN
+- [ ] Prioritized Experience Replay
 - [ ] A2C
 - [ ] Apex
 
