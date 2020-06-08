@@ -1,8 +1,9 @@
 import numpy as np
 import torch
+from buffer_core import BaseBuffer
 
 
-class ReplayBuffer:
+class ReplayBuffer(BaseBuffer):
     """Experience Replay.
 
     Experience Replay is just sampling randomly from buffer.
@@ -16,7 +17,7 @@ class ReplayBuffer:
         reward_memory (torch.Tensor): the buffer of reward.
         terminal_memory(torch.Tensor): the buffer for done or not.
     """
-    def __init__(self, state_dim, act_dim, cuda, max_size=10000):
+    def __init__(self, state_dim, act_dim, cuda=True, max_size=10000):
         """Initial of ReplayBuffer
 
         Args:
@@ -82,3 +83,8 @@ class ReplayBuffer:
 
         """
         return self.mem_control
+
+
+if __name__ == '__main__':
+    buffer = ReplayBuffer([3], 2, False)
+    print(len(buffer))
