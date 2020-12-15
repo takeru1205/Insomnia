@@ -1,6 +1,10 @@
+from collections import namedtuple
+
+
 class BaseBuffer:
     """The Base of Experience Replay.
     """
+    Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'terminal'))
 
     def store_transition(self):
         """To store state transition
